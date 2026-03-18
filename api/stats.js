@@ -1,42 +1,30 @@
 const axios = require('axios');
-const cheerio = require('cheerio');
 
 module.exports = async (req, res) => {
-  // On autorise ton site GitHub Pages à appeler cette API
+  // Autoriser ton site web (GitHub Pages) à appeler cette fonction
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Content-Type', 'application/json');
+
+  const { type } = req.query; // 'skaters' ou 'goalies'
   
-  const type = req.query.type || 'skaters';
+  // URLs officielles de l'API Web de la NHL
   const url = type === 'goalies' 
-    ? "https://www.marqueur.com/hockey/stats/nhl/stats.php?t=4" 
-    : "https://www.marqueur.com/hockey/stats/nhl/stats.php";
+    ? "https://api-web.nhle.com/v1/goalie-stats-now/en" 
+    : "https://api-web.nhle.com/v1/skater-stats-now/en";
 
   try {
-    const { data } = await axios.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
-    
-    const $ = cheerio.load(data);
-    const players = [];
-
-    // On cible le tableau de stats de Marqueur
-    $('table tr').each((i, el) => {
-      const cols = $(el).find('td');
-      if (cols.length >= 10 && i > 0) {
-        players.push({
-          rank: $(cols[0]).text().trim(),
-          name: $(cols[1]).text().trim(),
-          team: $(cols[2]).text().trim(),
-          pj: $(cols[3]).text().trim(),
-          b: $(cols[4]).text().trim(),
-          a: $(cols[5]).text().trim(),
-          pts: $(cols[6]).text().trim(),
-          moy: $(cols[9]).text().trim() // Pour les gardiens
-        });
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
       }
     });
 
-    res.status(200).json(players.slice(0, 100));
+    // On renvoie uniquement les données essentielles (le tableau 'data')
+    res.status(200).json(response.data.data);
   } catch (error) {
-    res.status(500).json({ error: "Erreur de lecture sur Marqueur" });
+    console.error("Erreur NHL:", error.message);
+    res.status(500).json({ error: "La NHL bloque la connexion. Réessaie plus tard." });
   }
 };
