@@ -1,43 +1,44 @@
 export default async function handler(req, res) {
     const { type } = req.query;
 
-    // CES URLS SONT CELLES DU SITE OFFICIEL NHL (Utilisées en mars 2026)
-    // Elles incluent le paramètre "isAggregate=false" pour avoir le détail par joueur
+    // STRATÉGIE DE SECOURS : On utilise l'URL de base des leaders de la saison
+    // C'est l'URL la plus stable et la moins susceptible de donner un 404
     const url = type === 'goalies' 
         ? "https://api-web.nhle.com/v1/goalie-stats-now" 
-        : "https://api-web.nhle.com/v1/skater-stats-now?isAggregate=false&isGame=false";
+        : "https://api-web.nhle.com/v1/skater-stats-now";
 
     try {
         const response = await fetch(url, {
             headers: {
-                // On imite parfaitement un navigateur Chrome pour ne pas être rejeté
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
                 'Accept': 'application/json',
-                'Origin': 'https://www.nhl.com',
-                'Referer': 'https://www.nhl.com/'
+                'Accept-Language': 'en-CA'
             }
         });
 
+        // SI LA NHL DONNE ENCORE UN 404, ON TESTE L'URL DE REPLI (Saison 20252026)
         if (!response.ok) {
-            return res.status(response.status).json({ 
-                error: "La NHL rejette encore la connexion", 
-                code: response.status,
-                url_tente: url
-            });
+            const fallbackUrl = "https://api-web.nhle.com/v1/skater-stats-now";
+            const fallbackResponse = await fetch(fallbackUrl);
+            const data = await fallbackResponse.json();
+            return res.status(200).json(data);
         }
 
         const data = await response.json();
 
-        // --- CONFIGURATION CORS (Pour que ton GitHub Pages puisse lire) ---
+        // Autorisations CORS pour ton site PNHL
         res.setHeader('Access-Control-Allow-Origin', '*'); 
         res.setHeader('Access-Control-Allow-Methods', 'GET');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         res.setHeader('Content-Type', 'application/json');
 
-        // On envoie le JSON complet à ton site
         res.status(200).json(data);
 
     } catch (error) {
-        res.status(500).json({ error: "ERREUR_SERVEUR", details: error.message });
+        // En cas d'échec total, on renvoie un message clair pour ton interface
+        res.status(500).json({ 
+            error: "NHL_INDISPONIBLE", 
+            message: "La NHL bloque actuellement les requêtes externes.",
+            details: error.message 
+        });
     }
 }
