@@ -1,16 +1,16 @@
 export default async function handler(req, res) {
     const { type } = req.query;
     
-    // ADRESSES OFFICIELLES ET STABLES
+    // NOUVELLES ADRESSES NHL (Format 2026 - Nécessite le /en/)
     const url = type === 'goalies' 
-        ? "https://api-web.nhle.com/v1/goalie-stats-now" 
-        : "https://api-web.nhle.com/v1/skater-stats-now";
+        ? "https://api-web.nhle.com/v1/goalie-stats-now/en" 
+        : "https://api-web.nhle.com/v1/skater-stats-now/en";
 
     try {
         const response = await fetch(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json'
+                // Le User-Agent est obligatoire pour ne pas être bloqué
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
         });
         
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
         
         const data = await response.json();
 
-        // Indispensable pour ton site GitHub Pages
+        // Autorisations essentielles pour ton site GitHub Pages
         res.setHeader('Access-Control-Allow-Origin', '*'); 
         res.setHeader('Access-Control-Allow-Methods', 'GET');
         res.setHeader('Content-Type', 'application/json');
